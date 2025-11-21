@@ -1,0 +1,40 @@
+[MASTER]
+# Add directories and file patterns to ignore
+ignore=CVS,.git,__pycache__,allure_report,allure_results,log_report,build,dist,venv,.venv
+
+# Python code to analyze
+extension-pkg-whitelist=
+
+[MESSAGES CONTROL]
+# Disable rules that are too noisy or not a good fit for this project
+disable=
+    missing-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-instance-attributes,
+    invalid-name,
+    broad-except,
+    duplicate-code,
+    consider-using-f-string
+
+[REPORTS]
+output-format = text
+reports = no
+score = no
+
+[BASIC]
+# Allow common short variable names used in tests and page objects
+good-names=i,j,k,ex,Run,_,e,f,id,df,ctx,idx,x,y
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[TYPECHECK]
+ignore-mixin-members=yes
+
+[DESIGN]
+max-args=10
+max-attributes=15
+max-branches=20
+max-statements=100

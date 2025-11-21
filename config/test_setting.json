@@ -1,0 +1,25 @@
+{
+    "environments": {
+        "herokuapp": {
+            "base_url": "https://the-internet.herokuapp.com/"
+        }
+    },
+    "browser_options": {
+        "browser_type": "chrome",
+        "version": "latest",
+        "headless": false,
+        "window_size": "maximize",
+        "proxy": false,
+        "debug_mode": false
+    },
+    "timeouts": {
+        "implicit_wait": 10,
+        "page_load_timeout": 20,
+        "script_timeout": 20,
+        "poll_frequency": 0.5
+    },
+    "proxy_settings": {
+        "http": "http://proxy.example.com:3128"
+    },
+    "log_level": "INFO"
+}

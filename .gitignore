@@ -1,0 +1,26 @@
+# Python
+__pycache__/*
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+env/
+venv/
+ENV/
+
+# Allure Reports
+allure-report/
+allure-results/
+
+# IDE
+.idea/
+.vscode/
+.venv/
+*.swp
+*.swo
+.cursor/
+.flake8/
+.pylintrc/
+
+# Log report
+log_report/*

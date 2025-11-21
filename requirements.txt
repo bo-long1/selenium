@@ -1,0 +1,6 @@
+behave>=1.2.6
+selenium>=4.5.0
+webdriver-manager>=4.0.0
+allure-behave>=2.9.43
+flake8>=6.1.0
+pylint>=3.0.0
