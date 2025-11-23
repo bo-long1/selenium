@@ -113,7 +113,7 @@ def main(argv=None):
 
     tmp = Path(tempfile.mkdtemp(prefix='behave_tmp_'))
     print('Temp dir:', tmp)
-    per_scenario_dirs = []
+    # per_scenario_dirs = []
     feature_paths = []
     try:
         for i, (_, _, block, header) in enumerate(scenarios, start=1):

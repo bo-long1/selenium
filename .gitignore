@@ -1,26 +1,39 @@
 # Python
-__pycache__/*
+__pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Virtual Environment
 env/
 venv/
 ENV/
+.venv/
 
 # Allure Reports
-allure-report/
-allure-results/
+allure_report/
+allure_results/
 
 # IDE
 .idea/
 .vscode/
-.venv/
 *.swp
 *.swo
 .cursor/
-.flake8/
-.pylintrc/
 
-# Log report
-log_report/*
+# Linter cache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Logs
+log_report/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (old versions)
+PARALLEL_EXECUTION.md
+SELF_CONTAINED_PAGE_PATTERN.md

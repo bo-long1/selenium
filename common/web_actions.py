@@ -1,7 +1,7 @@
 """Web actions helper - common Selenium interactions with explicit waits."""
 
 import time
-from typing import Tuple, List
+from typing import Optional, Tuple, List
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
@@ -36,10 +36,11 @@ class WebAction:
 
 
     # CLICK ACTIONS
-    def click(self, locator: Locator, timeout: int = None) -> None:
-        """Click on element (waits for clickable)."""
+    def click(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
+        """Click element after waiting for it to be clickable."""
         element = self.wait.wait_for_element_clickable(locator, timeout)
         element.click()
+        return element
 
     def double_click(self, locator: Locator) -> None:
         """Double-click on element."""

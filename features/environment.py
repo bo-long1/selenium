@@ -7,7 +7,9 @@ Features:
 - Dual logging: console + timestamped file
 - Allure report integration
 - Debug mode for detailed step-by-step logging
+- Thread-safe: Page objects initialized on-demand in steps
 """
+import platform
 from common.logger import logger, reconfigure_logger_from_settings
 from driver.environment_helpers import (
     setup_directories,
@@ -19,8 +21,8 @@ from driver.environment_helpers import (
     log_step_end,
     log_scenario_details,
     is_step_failed,
+    close_driver_if_continuing,
 )
-
 
 # ============================================================================
 # BEHAVE HOOKS
@@ -33,22 +35,22 @@ def before_all(context):
     print("=" * 80)
     print("Selenium BDD Test Runner")
     print("=" * 80)
-
+    logger.debug(f"OS: {platform.system()} | Python: {platform.python_version()}")
 
 def before_scenario(context, scenario):
-    """Setup: Create WebDriver for the scenario."""
+    """Setup: Create WebDriver and initialize page objects for the scenario."""
     log_scenario_details(scenario)
+    create_driver(context, scenario.name)
     try:
-        create_driver(context, scenario.name)
+        logger.info(f"WebDriver created for scenario: {scenario.name}")
+        
     except Exception as e:
-        logger.error(f'Failed to create WebDriver for scenario "{scenario.name}": {e}')
-        raise
-    logger.info(f"WebDriver created for scenario: {scenario.name}") 
+        logger.error(f'Failed to initialize scenario "{scenario.name}": {e}')
+        raise 
 
 def before_step(context, step):
     """Log step start only in debug mode (formatter shows steps in normal mode)."""
     log_step_start(step)
-
 
 def after_step(context, step):
     """Capture diagnostics on step failure and log completion."""
@@ -56,8 +58,11 @@ def after_step(context, step):
         log_step_end(step)
         handle_step_failure(context, step)
 
-
 def after_scenario(context, scenario):
-    """Cleanup: Close WebDriver after scenario."""
+    """Cleanup: Close WebDriver and clean up page objects after scenario."""
+    # Close WebDriver
     close_driver(context, scenario.name)
-    logger.info(f"WebDriver closed for scenario: {scenario.name}")
+    logger.info(f"Scenario cleanup completed: {scenario.name}")
+
+def after_feature(context, feature):
+    close_driver_if_continuing(context)

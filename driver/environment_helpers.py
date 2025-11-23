@@ -1,16 +1,19 @@
 """
 Core helper functions for WebDriver management, logging, and failure diagnostics.
+
+Thread-safe design for parallel execution.
 """
 
+import os
 import shutil
 import json
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Any
 
 from driver import driver_factory
 from common.logger import is_debug_mode, logger
-from pages.heroku import HerokuPage
 
 try:
     import allure  # type: ignore
@@ -22,40 +25,56 @@ except ImportError:
 # ============================================================================
 # CONSTANTS & CONFIGURATION
 # ============================================================================
-ALLURE_DIR = Path("allure_results")
+ALLURE_BASE_DIR = Path("allure_results")
 LOG_DIR = Path("log_report")
+DRIVER_CREATION_RETRIES = 3
 
 
 # ============================================================================
 # DIRECTORY SETUP
 # ============================================================================
+
+def get_allure_dir() -> Path:
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if worker:
+        return ALLURE_BASE_DIR / worker
+    return ALLURE_BASE_DIR / f"p{os.getpid()}_t{threading.get_ident()}"
+
 def setup_directories():
     """Create directories for reports."""
-    for directory in [ALLURE_DIR, LOG_DIR]:
-        directory.mkdir(parents=True, exist_ok=True)
-
-    logger.debug(f"Directories ready: {ALLURE_DIR}, {LOG_DIR}")
+    allure_dir = get_allure_dir()
+    for d in (LOG_DIR, allure_dir):
+        d.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"Directories ready: {LOG_DIR}, {allure_dir}")
 
 
 def clean_allure_results():
     """Remove old Allure results if they exist."""
-    if ALLURE_DIR.exists():
-        logger.debug("Cleaning old Allure results...")
+    if ALLURE_BASE_DIR.exists():
         try:
-            shutil.rmtree(ALLURE_DIR)
-            logger.debug("Cleaned")
+            for p in ALLURE_BASE_DIR.iterdir():
+                if p.is_dir():
+                    shutil.rmtree(p, ignore_errors=True)
+            logger.debug("Cleaned old allure worker directories.")
         except Exception as e:
-            logger.warning(f"Could not clean Allure results: {e}")
+            logger.warning(f"Cannot fully clean allure base: {e}")
 
 
 # ============================================================================
 # DRIVER MANAGEMENT
-# ============================================================================
 def create_driver(context: Any, scenario_name: str):
-    """Create WebDriver and initialize page objects."""
-    context.driver = driver_factory.create_driver_from_settings()
-    HerokuPage.set_driver(context.driver)
-
+    """Create WebDriver instance (thread-safe per scenario)."""
+    last_err = None
+    for attempt in range(1, DRIVER_CREATION_RETRIES + 1):
+        try:
+            context.driver = driver_factory.create_driver_from_settings()
+            # Health probe
+            _ = context.driver.current_url
+            logger.debug(f"Driver created (attempt {attempt}) for scenario: {scenario_name}")
+            return
+        except Exception as e:
+            logger.warning(f"Driver init attempt {attempt} failed: {e}")
+    raise RuntimeError(f"Failed to create WebDriver after {DRIVER_CREATION_RETRIES} attempts") from last_err
 
 
 def close_driver(context: Any, scenario_name: str):
@@ -67,41 +86,53 @@ def close_driver(context: Any, scenario_name: str):
 
     try:
         driver.delete_all_cookies()
+        driver.clear_cache()
         driver.quit()
     except Exception as e:
-        logger.debug(f"Could not delete cookies and quit driver: {e}")
+        logger.debug(f"Could not delete cookies, clear cache, and quit driver: {e}")
     finally:
         context.driver = None
 
+def close_driver_if_continuing(context: Any):
+    """Close WebDriver if the context indicates continuation after failure."""
+    driver = getattr(context, "driver", None)
+    if not driver:
+        return
+
+    try:
+        driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
+        driver.execute_cdp_cmd("Network.clearBrowserCache", {})
+        driver.execute_cdp_cmd("window.close", {})
+    except Exception as e:
+        logger.debug(f"Could not delete cookies, clear cache, and quit driver: {e}")
+    finally:
+        context.driver = None
 # ============================================================================
 # FAILURE DIAGNOSTICS
 # ============================================================================
 def generate_filename(basename: str) -> str:
-    """Generate clean filename from name + timestamp (no special chars)."""
+    """Generate unique filename with thread ID to avoid collision in parallel runs."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    thread_id = threading.get_ident()  # Unique per thread
     safe_name = "".join(c if c.isalnum() or c in (" ", "_", "-") else "_" for c in basename).strip()
     safe_name = safe_name or "step"
-    return f"{safe_name}_{timestamp}"
+    return f"{safe_name}_{timestamp}_t{thread_id}"
 
 
 def capture_screenshot(driver, step_name: str) -> Optional[Path]:
     """Capture screenshot to file and optionally attach to Allure."""
     try:
-        screenshot_bytes = driver.get_screenshot_as_png()
-        filename = generate_filename(step_name)
-        screenshot_path = LOG_DIR / f"{filename}.png"
-        screenshot_path.write_bytes(screenshot_bytes)
-
-        logger.info(f"Screenshot saved: {screenshot_path}")
-
+        data = driver.get_screenshot_as_png()
+        fname = generate_filename(step_name)
+        path = LOG_DIR / f"{fname}.png"
+        path.write_bytes(data)
         if ALLURE_AVAILABLE:
-            allure.attach(
-                screenshot_bytes,
-                name=f"Screenshot - {step_name}",
-                attachment_type=allure.attachment_type.PNG,
-            )
-
-        return screenshot_path
+            allure.attach(data, name=f"Screenshot - {step_name}", attachment_type=allure.attachment_type.PNG)
+        logger.info(f"Screenshot saved: {path}")
+        return path
+    except Exception as e:
+        logger.warning(f"Screenshot capture failed: {e}")
+        return None
 
     except Exception as e:
         logger.warning(f"Could not capture screenshot: {e}")
