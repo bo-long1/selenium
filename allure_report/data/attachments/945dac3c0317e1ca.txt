@@ -1,8 +1,0 @@
-[
-  {
-    "level": "SEVERE",
-    "message": "https://298279967.log.optimizely.com/event?a=298279967&d=298279967&y=false&n=https%3A%2F%2Fthe-internet.herokuapp.com%2Fcheckboxes&u=oeu1763228599920r0.3088397851549999&wxhr=true&t=1763228599922&f=298349752,318188263 - Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
-    "source": "network",
-    "timestamp": 1763228599958
-  }
-]
