@@ -7,7 +7,6 @@ import logging
 import atexit
 from pathlib import Path
 from datetime import datetime
-from common.utils import load_settings
 import threading
 from logging.handlers import QueueHandler, QueueListener
 import queue
@@ -23,6 +22,8 @@ _console_handler: logging.Handler | None = None
 def is_debug_mode() -> bool:
     """Check if debug mode is enabled in settings."""
     try:
+        # import here to avoid circular dependency
+        from common.utils import load_settings
         settings = load_settings()
         raw = settings.get("browser_options", {}).get("debug_mode", False)
         if isinstance(raw, bool):
@@ -33,7 +34,6 @@ def is_debug_mode() -> bool:
             return raw != 0
         return bool(raw)
     except Exception:
-        logging.getLogger(__name__).warning("Could not read debug mode from settings; defaulting to False")
         return False
 
 

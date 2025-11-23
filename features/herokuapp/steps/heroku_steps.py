@@ -1,51 +1,80 @@
-""" Step definitions for Herokuapp page interactions."""
-from behave import *
-from pages.heroku import HerokuPage
+"""
+Step definitions for Herokuapp page interactions.
+
+Uses lazy-initialized page objects for thread-safe access.
+"""
+from behave import given, when, then
 from common.web_assertions import WebAssertions
+from pages.page_factory import get_heroku_page
 
 
 @given('Visit the page {url}')
 def step_visit_page(context, url):
-    HerokuPage.get_instance().open(url)
+    """Navigate to the specified URL."""
+    get_heroku_page(context).open(url)
 
 @when('click a/b testing')
 def step_click_ab_testing(context):
-    HerokuPage.get_instance().click_AB_testing()
+    """Click on A/B Testing link."""
+    get_heroku_page(context).click_AB_testing()
 
 @then('should see the title "{expected_title}"')
 def step_should_see_title(context, expected_title):
-    assert expected_title in context.driver.title
+    """Verify page title contains expected text."""
+    actual_title = context.driver.title
+    WebAssertions().assert_contains(
+        actual_title,
+        expected_title,
+        f"Expected title to contain '{expected_title}' but got '{actual_title}'"
+    )
 
-@when('input username "{username}" and password "{password}"')
-def step_input_username_password(context, username, password):
-    HerokuPage.get_instance().input_username_and_pwd(username, password)
 
 @when('click func Authentication')
 def step_click_func_auth(context):
-    HerokuPage.get_instance().click_login_authentication()
+    """Click on Form Authentication link."""
+    get_heroku_page(context).click_login_authentication()
+
+@when('input username "{username}" and password "{password}"')
+def step_input_username_password(context, username, password):
+    """Input username and password into login form."""
+    get_heroku_page(context).input_username_and_pwd(username, password)
 
 @when('input into the username "{username}" and password "{password}"')
 def step_input_func_username_password(context, username, password):
-    HerokuPage.get_instance().input_username_and_pwd(username, password)
+    """Input username and password into form authentication."""
+    get_heroku_page(context).input_username_and_pwd(username, password)
 
 @when('enter button login')
 def step_enter_button_login(context):
-    HerokuPage.get_instance().click_btn_login()
+    """Click login button."""
+    get_heroku_page(context).click_btn_login()
 
 @then('Verify user login success')
 def step_verify_user_login_success(context):
-    text_login_success = HerokuPage.get_instance().verify_subheader()
-    WebAssertions().assert_contains(text_login_success, "Welcome to the Secure Area", "Login failed or unexpected subheader text.")
+    """Verify successful login by checking secure area subheader."""
+    subheader_text = get_heroku_page(context).verify_subheader()
+    WebAssertions().assert_contains(
+        subheader_text,
+        "Welcome to the Secure Area",
+        "Login failed or unexpected subheader text."
+    )
 
 @when('Click to verify basic functionality')
 def step_click_basic_auth(context):
-    HerokuPage.get_instance().click_basic_authen()
+    """Click on Basic Auth link."""
+    get_heroku_page(context).click_basic_authen()
 
 @then('Visit with auth "{auth_url}"')
 def step_visit_with_auth(context, auth_url):
-    HerokuPage.get_instance().handle_auth_popup(auth_url)
+    """Navigate to URL with embedded authentication credentials."""
+    get_heroku_page(context).handle_auth_popup(auth_url)
 
 @then('Verify the authentication process')
 def step_verify_auth_process(context):
-    message = HerokuPage.get_instance().get_message()
-    WebAssertions().assert_contains(message, "Congratulations! You must have the proper credentials.", "Authentication success message not found")
+    """Verify authentication success message."""
+    message = get_heroku_page(context).get_message()
+    WebAssertions().assert_contains(
+        message,
+        "Congratulations! You must have the proper credentials.",
+        "Authentication success message not found"
+    )

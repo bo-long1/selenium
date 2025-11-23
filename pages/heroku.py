@@ -1,4 +1,9 @@
-""" Login Page Object Model for Herokuapp """
+"""
+Herokuapp Page Object Model.
+
+Thread-safe design: No singleton pattern.
+Each scenario creates its own instance via context.
+"""
 
 from common.logger import logger
 from common.web_actions import WebAction
@@ -7,22 +12,13 @@ from pages.locator import LoginPageLocators, CheckboxPageLocators
 
 
 class HerokuPage(WebAction, WebWait):
+    """Page Object for Herokuapp interactions. Thread-safe per-scenario instance."""
+    
     def __init__(self, driver):
+        """Initialize page object with dedicated WebDriver instance."""
         WebAction.__init__(self, driver)
         WebWait.__init__(self, driver)
         self.driver = driver
-
-    _instance = None
-
-    @classmethod
-    def set_driver(cls, driver):
-        cls._instance = cls(driver)
-
-    @classmethod
-    def get_instance(cls):
-        if cls._instance is None:
-            raise RuntimeError("Driver not set. Call set_driver() first.")
-        return cls._instance
 
     def open(self, url):
         self.driver.get(url)

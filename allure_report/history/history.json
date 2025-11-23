@@ -1,1 +1,0 @@
-{"006da96ace763ef5c6158a2f27482c5e":{"statistic":{"failed":0,"broken":1,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"5452896ad02e0b06","status":"broken","statusDetails":"TypeError: WebAction.find_elements() takes 2 positional arguments but 3 were given\n","time":{"start":1763228593704,"stop":1763228603653,"duration":9949}}]}}
