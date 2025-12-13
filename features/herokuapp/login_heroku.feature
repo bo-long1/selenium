@@ -19,5 +19,6 @@ Scenario: Test basic authentication
         Then Verify user login success
 
         Examples:
-        | username      | password              |
-        | tomsmith      | SuperSecretPassword!  |
+            | username  | password                |
+            | tomsmith  | SuperSecretPassword!    |
+            | tomsmith1 | SuperSecretPassword!111 |

@@ -20,5 +20,7 @@
     },
     "proxy_settings": {
         "http": "http://proxy.example.com:3128"
-    }
+    },
+    "auto_generate_report": true,
+    "allure_results_dir": "allure_results"
 }

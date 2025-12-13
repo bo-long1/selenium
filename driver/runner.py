@@ -45,6 +45,8 @@ class BehaveRunner:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / 'results.json'
         
+        # Use JSON formatter for parallel execution (thread-safe)
+        # JSON results are then converted to Allure format
         cmd = [
             sys.executable, '-m', 'behave',
             str(feature_path),
@@ -196,17 +198,31 @@ class AllureConverter:
     def _build_allure_scenario(element: dict, feature_name: str) -> dict:
         """Build Allure scenario structure from Behave element."""
         scenario_name = element.get('name', 'Scenario')
-        scenario_status = AllureConverter._normalize_status(element.get('status', 'passed'))
         
         steps = []
         total_duration = 0
+        scenario_status = 'passed'
+        error_message = None
+        error_trace = None
         
         for step in element.get('steps', []):
-            step_data = AllureConverter._build_allure_step(step)
+            step_data, step_error = AllureConverter._build_allure_step(step)
             steps.append(step_data)
-            total_duration += step_data['stop']
+            total_duration += step_data.get('stop', 0)
+            
+            # If any step failed/errored, scenario fails
+            if step_data['status'] in ['failed', 'broken']:
+                scenario_status = step_data['status']
+                if step_error:
+                    error_message = step_error.get('message')
+                    error_trace = step_error.get('trace')
         
-        return {
+        # Also check element-level status
+        element_status = element.get('status', '')
+        if element_status in ['failed', 'error']:
+            scenario_status = 'failed' if element_status == 'failed' else 'broken'
+        
+        result = {
             'uuid': str(uuid.uuid4()),
             'name': scenario_name,
             'fullName': f'{feature_name}.{scenario_name}',
@@ -217,20 +233,54 @@ class AllureConverter:
             'steps': steps,
             'labels': AllureConverter._build_labels(feature_name, element.get('tags', []))
         }
+        
+        # Add error details if failed
+        if error_message or error_trace:
+            result['statusDetails'] = {}
+            if error_message:
+                result['statusDetails']['message'] = error_message
+            if error_trace:
+                result['statusDetails']['trace'] = error_trace
+        
+        return result
     
     @staticmethod
-    def _build_allure_step(step: dict) -> dict:
+    def _build_allure_step(step: dict) -> tuple:
         """Build Allure step structure from Behave step."""
         step_result = step.get('result', {})
-        step_status = AllureConverter._normalize_status(step_result.get('status', 'passed'))
+        raw_status = step_result.get('status', 'passed')
+        step_status = AllureConverter._normalize_status(raw_status)
         step_duration = int((step_result.get('duration', 0) or 0) * 1000)
         
-        return {
+        step_data = {
             'name': step.get('keyword', '') + step.get('name', ''),
             'status': step_status,
             'start': 0,
             'stop': step_duration,
         }
+        
+        # Capture error details
+        error_info = None
+        if raw_status in ['failed', 'error']:
+            raw_error = step_result.get('error_message', '')
+            # Convert list to string if needed
+            if isinstance(raw_error, list):
+                error_msg = '\n'.join(raw_error)
+            else:
+                error_msg = str(raw_error) if raw_error else ''
+            
+            error_info = {
+                'message': error_msg,
+                'trace': error_msg  # Behave puts trace in error_message
+            }
+            # Add status details to step
+            if error_msg:
+                step_data['statusDetails'] = {
+                    'message': error_msg[:500],  # Truncate long messages
+                    'trace': error_msg
+                }
+        
+        return step_data, error_info
     
     @staticmethod
     def _build_labels(feature_name: str, tags: List[str]) -> List[dict]:
@@ -249,8 +299,10 @@ class AllureConverter:
     @staticmethod
     def _normalize_status(status: str) -> str:
         """Normalize Behave status to Allure status."""
-        if status in ['failed', 'error']:
+        if status == 'failed':
             return 'failed'
+        elif status == 'error':
+            return 'broken'  # Allure uses 'broken' for errors
         elif status in ['skipped', 'undefined']:
             return 'skipped'
         return 'passed'
@@ -279,12 +331,26 @@ class AllureReportGenerator:
             True if successful, False otherwise
         """
         try:
+            # Check if allure is available
+            check_result = subprocess.run(
+                ['allure', '--version'], 
+                capture_output=True, 
+                text=True,
+                shell=True  # Required for Windows to find npm global packages
+            )
+            
+            if check_result.returncode != 0:
+                raise FileNotFoundError("Allure CLI not found")
+            
             # Preserve history from previous report
             AllureReportGenerator._preserve_history(allure_results_dir, report_dir)
             
-            # Generate report
-            cmd = ['allure', 'generate', str(allure_results_dir), '-o', report_dir, '--clean']
-            subprocess.run(cmd, check=True, capture_output=True)
+            # Generate report using shell=True for Windows compatibility
+            cmd = f'allure generate "{allure_results_dir}" -o "{report_dir}" --clean'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
             
             print(f'✅ Allure report generated at ./{report_dir}')
             print(f'   View report: cd {report_dir} && python -m http.server 8080')
@@ -298,6 +364,8 @@ class AllureReportGenerator:
             
         except subprocess.CalledProcessError as e:
             print(f'❌ Allure generation failed: {e}')
+            if hasattr(e, 'stderr') and e.stderr:
+                print(f'   Error: {e.stderr}')
             return False
     
     @staticmethod
@@ -386,7 +454,14 @@ class TestExecutor:
             self._cleanup_temp_files()
     
     def _get_feature_files(self, feature_name: Optional[str]) -> List[Path]:
-        """Get list of feature files to execute."""
+        """
+        Get list of feature files to execute.
+        
+        Supports:
+            - Folder name: herokuapp → features/herokuapp/*.feature
+            - Relative path: herokuapp/login.feature → features/herokuapp/login.feature
+            - Absolute path: /full/path/to/file.feature
+        """
         features_base_dir = PROJECT_ROOT / self.runner.settings.get('features_dir', 'features')
         
         if not features_base_dir.exists():
@@ -394,7 +469,24 @@ class TestExecutor:
             return []
         
         if feature_name:
-            features_dir = features_base_dir / feature_name
+            # Check if it's a specific .feature file
+            if feature_name.endswith('.feature'):
+                # Remove leading ./ if present
+                clean_path = feature_name.lstrip('./')
+                feature_path = features_base_dir / clean_path
+                
+                # Also try as absolute path
+                if not feature_path.exists():
+                    feature_path = Path(feature_name)
+                
+                if feature_path.exists() and feature_path.is_file():
+                    return [feature_path]
+                else:
+                    print(f'❌ Feature file not found: {feature_name}')
+                    return []
+            else:
+                # It's a folder name
+                features_dir = features_base_dir / feature_name
         else:
             features_dir = features_base_dir
         
@@ -432,14 +524,14 @@ class TestExecutor:
         """Process test results and generate reports."""
         self.runner.allure_results_dir.mkdir(parents=True, exist_ok=True)
         
-        # Collect JSON files
+        # Collect JSON files from temp directories
         all_json_files = []
         for result_dir in result_dirs:
             all_json_files.extend(result_dir.glob('*.json'))
         
         print(f'📊 Collected {len(all_json_files)} JSON result files')
         
-        # Convert to Allure format
+        # Convert JSON to Allure format
         if all_json_files:
             converted = self.converter.convert_results(
                 self.runner.temp_results, 
@@ -448,7 +540,16 @@ class TestExecutor:
             
             if converted > 0:
                 print(f'✅ Tests completed! {converted} scenarios converted')
-                self.report_generator.generate(self.runner.allure_results_dir)
+                
+                # Check auto_generate_report setting
+                auto_generate = self.runner.settings.get('auto_generate_report', True)
+                
+                if auto_generate:
+                    self.report_generator.generate(self.runner.allure_results_dir)
+                else:
+                    print('⚠️  auto_generate_report is disabled')
+                    print('📝 To generate report manually, run: bash generate_allure_report.sh')
+                
                 return 0
         
         print('❌ Tests failed or no results generated')
