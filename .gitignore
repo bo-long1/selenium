@@ -11,6 +11,7 @@ ENV/
 .venv/
 
 # Allure Reports
+allure-report/
 allure_report/
 allure_results/
 
@@ -29,6 +30,8 @@ allure_results/
 # Logs
 log_report/
 *.log
+temp_results/
+allure_json_output
 
 # OS
 .DS_Store

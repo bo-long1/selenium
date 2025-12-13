@@ -1,8 +1,5 @@
 """
-Herokuapp Page Object Model.
-
-Thread-safe design: No singleton pattern.
-Each scenario creates its own instance via context.
+Defination Herokuapp Page.
 """
 
 from common.logger import logger
@@ -12,7 +9,6 @@ from pages.locator import LoginPageLocators, CheckboxPageLocators
 
 
 class HerokuPage(WebAction, WebWait):
-    """Page Object for Herokuapp interactions. Thread-safe per-scenario instance."""
     
     def __init__(self, driver):
         """Initialize page object with dedicated WebDriver instance."""
@@ -70,3 +66,4 @@ class HerokuPage(WebAction, WebWait):
             logger.debug(f"Toggling checkbox '{text}' from {current} to {target}")
             checkbox.click()
         return checkbox.is_selected()
+

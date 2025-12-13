@@ -1,7 +1,5 @@
 """
 Step definitions for Herokuapp page interactions.
-
-Uses lazy-initialized page objects for thread-safe access.
 """
 from behave import given, when, then
 from common.web_assertions import WebAssertions
@@ -27,7 +25,6 @@ def step_should_see_title(context, expected_title):
         expected_title,
         f"Expected title to contain '{expected_title}' but got '{actual_title}'"
     )
-
 
 @when('click func Authentication')
 def step_click_func_auth(context):

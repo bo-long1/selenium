@@ -1,6 +1,6 @@
-# 🚀 Selenium BDD Framework (Thread-Safe)
+# 🚀 Selenium BDD Framework
 
-Modern Behave-BDD framework with Page Object Model, parallel execution support, and comprehensive reporting.
+> Thread-safe Behave framework with Page Object Model and parallel execution
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Selenium](https://img.shields.io/badge/selenium-4.x-green.svg)](https://selenium.dev/)
@@ -8,411 +8,253 @@ Modern Behave-BDD framework with Page Object Model, parallel execution support, 
 
 ---
 
+## 📑 Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Running Tests](#running-tests)
+- [Reporting](#reporting)
+- [Configuration](#configuration)
+- [Writing Tests](#writing-tests)
+- [Troubleshooting](#troubleshooting)
+- [Best Practices](#best-practices)
+
+---
+
 ## ✨ Features
 
-- ✅ **Thread-safe design** - Ready for parallel execution (`--processes N`)
-- ✅ **Page Object Model** - Lazy initialization, zero singleton patterns
-- ✅ **Smart failure diagnostics** - Auto screenshot + console logs on failure
-- ✅ **Dual logging** - Console + timestamped file with debug mode
-- ✅ **Allure reports** - Beautiful HTML reports with attachments
-- ✅ **Multi-browser** - Chrome/Edge support via webdriver-manager
-- ✅ **Flexible config** - JSON-based settings (headless, timeouts, env)
-- ✅ **Parameterized locators** - Dynamic XPath with `{}` placeholders
+| Feature              | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| 🔒 Thread-safe       | Parallel execution without race conditions            |
+| 📦 Page Object Model | Maintainable page components with lazy initialization |
+| ⚡ Parallel Runner   | Custom runner with ThreadPoolExecutor + subprocess    |
+| 📊 Allure Reports    | Interactive HTML reports with history tracking        |
+| 📸 Auto Diagnostics  | Screenshots + console logs on failure                 |
+| 🎯 Smart Waits       | Custom explicit wait conditions                       |
+| 🔧 Multi-env         | JSON config for multiple environments                 |
 
 ---
 
-## 📦 Quick Start
+## ⚡ Quick Start
 
-### 1. Setup Environment
+### 1. Setup
 
-```bash
-# Clone repository
-git clone <repo-url>
+````bash
+# Clone & install
+git clone https://github.com/bo-long1/selenium.git selenium_bdd_threaded
 cd selenium_bdd_threaded
-
-# Create virtual environment
 python -m venv .venv
-
-# Activate (Windows Git Bash)
-source .venv/Scripts/activate
-
-# Install dependencies
+source .venv/Scripts/activate  # Windows Git Bash
 pip install -r requirements.txt
-```
 
-### 2. Run Tests
-
-```bash
-# Single feature
+# Verify installation
 behave features/herokuapp/login_heroku.feature
 
-# All features
-behave features/
+### System Requirements
+- **Python**: 3.11 or higher
+- **Git**: For cloning the repository
+- **Browser**: Chrome or Edge (automatically managed via webdriver-manager)
+- **Java**: 11+ (required for Allure CLI)
 
-# With Allure report
-behave -f allure_behave.formatter:AllureFormatter -o allure_results features/
-allure serve allure_results
-
-# Parallel execution (4 workers)
-pip install behave-parallel
-behave --processes 4 --parallel-element scenario
-```
-
-### 3. View Results
+### Step 1: Clone the Repository
 
 ```bash
-# Allure HTML report
-allure serve allure_results
+# Clone the repository to your local machine
+git clone https://github.com/bo-long1/selenium.git selenium_bdd_threaded
+cd selenium_bdd_threaded
 
-# Text logs
-cat log_report/test_*.log
+# Create Virtual Environment
+python -m venv venv
+## Windows
+venv\Scripts\activate
+## macOS/Linux
+source venv/bin/activate
+
+# Install Dependencies
+pip install -r requirements.txt
+
+# Install Allure CLI (Optional)
+## Windows (via Scoop)
+scoop install allure
+
+## macOS
+brew install allure
+
+## Linux
+sudo apt-add-repository ppa:qameta/allure
+sudo apt-get update && sudo apt-get install allure
+````
+
+### Step 2: Run Tests
+
+```bash
+# Single test
+behave features/herokuapp/login_heroku.feature
+
+# Run by scenario line
+behave features/herokuapp/login_heroku.feature:23
+
+# With tags
+behave --tags @smoke
+
+# Parallel Execution (Recommended)
+# Custom runner - subprocess-based isolation
+python driver/runner.py --feature herokuapp --mode parallel --workers 4
+
+# How it works:
+# Main Process → ThreadPoolExecutor → N workers
+#   ├─ Worker 1 → subprocess(behave feature1) → Browser 1
+#   ├─ Worker 2 → subprocess(behave feature2) → Browser 2
+#   └─ Worker N → subprocess(behave featureN) → Browser N
+# → Merge JSON → Convert Allure → Generate HTML
+
+# Sequential
+python driver/runner.py --feature herokuapp --mode single
+```
+
+### Step 3: View Report
+
+```bash
+# Auto-generated at ./allure_report after runner.py
+cd allure_report && python -m http.server 8080
+# Open: http://localhost:8080
+
+# Manual generation
+allure generate allure_results -o allure_report --clean
 ```
 
 ---
 
-## 🗂️ Project Structure
+## 📁 Project Structure
 
 ```
 selenium_bdd_threaded/
-│
-├── config/
-│   └── test_setting.json          # Browser config, timeouts, environments
-│
-├── driver/
-│   ├── driver_factory.py          # WebDriver creation (Chrome/Edge)
-│   └── environment_helpers.py     # Driver lifecycle, screenshot, logs
-│
-├── common/
-│   ├── logger.py                  # Thread-safe queue-based logger
-│   ├── utils.py                   # Settings loader
-│   ├── web_wait.py                # Explicit waits (clickable, visible, etc.)
-│   └── web_assertions.py          # Reusable assertions
-│
-├── pages/
-│   ├── locator.py                 # Centralized element locators
-│   ├── heroku.py                  # HerokuPage (actions + assertions)
-│   └── page_factory.py            # Lazy page object helpers
-│
-├── features/
-│   ├── environment.py             # Behave hooks (before_scenario, after_all)
-│   └── herokuapp/
-│       ├── login_heroku.feature   # Gherkin scenarios
-│       └── steps/
-│           └── heroku_steps.py    # Step definitions
-│
-├── log_report/                    # Runtime logs (auto-generated)
-├── allure_results/                # Test results JSON (auto-generated)
-└── allure_report/                 # HTML report (generated by Allure)
+├── 🔧 config/
+│   └── test_setting.json          # Browser config, timeouts, URLs
+├── 🚗 driver/
+│   ├── driver_factory.py          # WebDriver creation
+│   ├── environment_helpers.py     # Hooks, diagnostics, logging
+│   └── runner.py                  # ⭐ Parallel execution engine
+├── 🛠️ common/
+│   ├── logger.py                  # Thread-safe logging
+│   ├── utils.py                   # BasePage, load_settings
+│   ├── web_actions.py             # Reusable actions
+│   ├── web_assertions.py          # Custom assertions
+│   └── web_wait.py                # Explicit waits
+├── 📄 pages/
+│   ├── locator.py                 # Centralized locators
+│   ├── heroku.py                  # Page objects
+│   └── page_factory.py            # Lazy page initialization
+├── 🥒 features/
+│   ├── environment.py             # Global hooks
+│   ├── herokuapp/
+│   │   ├── *.feature              # Gherkin scenarios
+│   │   ├── environment.py         # Feature hooks
+│   │   └── steps/*.py             # Step definitions
+│   └── orange_hrm/
+│       └── ...
+├── 📊 allure_results/             # JSON results
+├── 📈 allure_report/              # HTML report
+└── 📝 log_report/                 # Screenshots, logs
 ```
+
+---
+
+## 📊 Reporting
+
+### Generate Allure Report
+
+```bash
+# Auto-generated by runner.py
+python driver/runner.py --feature herokuapp --mode parallel --workers 4
+# ✅ Report at: ./allure_report
+
+# Manual generation
+allure generate allure_results -o allure_report --clean
+
+# Serve locally
+cd allure_report && python -m http.server 8080
+```
+
+### Install Allure CLI
+
+```bash
+npm install -g allure-commandline  # via npm
+brew install allure                # macOS
+scoop install allure               # Windows
+```
+
+Track History & Trends
+History is automatically preserved by runner.py. After multiple runs:
+
+Duration Trend - Execution time across runs
+History Trend - Pass/fail rate over time
+Retry Trend - Flaky test detection
 
 ---
 
 ## ⚙️ Configuration
 
-### `config/test_setting.json`
+Edit `config/config.json` for environment-specific settings:
 
 ```json
 {
-  "browser_options": {
-    "browser_type": "chrome", // "chrome" | "edge"
-    "headless": false, // true = run in background
-    "debug_mode": false, // true = DEBUG logs + thread IDs
-    "env": "herokuapp" // environment key for base_url
-  },
-  "timeouts": {
-    "implicit_wait": 10, // seconds
-    "page_load_timeout": 30
-  },
-  "environments": {
-    "herokuapp": {
-      "base_url": "https://the-internet.herokuapp.com/"
-    }
+  "dev": {
+    "base_url": "https://dev.example.com",
+    "browser": "chrome",
+    "headless": false,
+    "timeout": 10,
+    "thread_count": 4
   }
 }
 ```
 
-**Key Settings:**
-
-| Setting        | Purpose                      | Values                       |
-| -------------- | ---------------------------- | ---------------------------- |
-| `browser_type` | Browser to launch            | `chrome`, `edge`             |
-| `headless`     | Run without GUI (faster)     | `true`, `false`              |
-| `debug_mode`   | Verbose logs with thread IDs | `true`, `false`              |
-| `env`          | Select environment config    | `herokuapp`, `staging`, etc. |
-
 ---
 
-## 📝 Writing Tests
+## 🔧 CI/CD Integration
 
-### 1. Feature File (Gherkin)
+### GitHub Actions Example
 
-```gherkin
-# features/herokuapp/login_heroku.feature
-Feature: Herokuapp Login
+```yaml
+name: BDD Tests
 
-  Scenario: Successful login
-    Given Visit the page "/"
-    When click a/b testing
-    Then should see the title "A/B Test Control"
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: behave --parallel-processes 4 --format json.behave_json --outfile reports/report.json
+      - uses: simple-elf/allure-report-action@master
 ```
-
-### 2. Step Definitions
-
-```python
-# features/herokuapp/steps/heroku_steps.py
-from behave import given, when, then
-from pages.page_factory import get_heroku_page
-
-@given('Visit the page {url}')
-def step_visit_page(context, url):
-    get_heroku_page(context).open(url)
-
-@when('click a/b testing')
-def step_click_ab_testing(context):
-    get_heroku_page(context).click_AB_testing()
-
-@then('should see the title {expected_title}')
-def step_verify_title(context, expected_title):
-    actual = get_heroku_page(context).get_header_title()
-    assert actual == expected_title, f"Expected '{expected_title}', got '{actual}'"
-```
-
-### 3. Page Object
-
-```python
-# pages/heroku.py
-from common.utils import BasePage
-from pages.locator import LoginPageLocators
-
-class HerokuPage(BasePage):
-    def __init__(self, driver, base_url=""):
-        super().__init__(driver, base_url)
-
-    def click_AB_testing(self):
-        self.wait_for_element_clickable(LoginPageLocators.ab_testing).click()
-
-    def get_header_title(self):
-        return self.wait_for_element_present(LoginPageLocators.header).text
-```
-
-### 4. Locators (Centralized)
-
-```python
-# pages/locator.py
-from selenium.webdriver.common.by import By
-
-class LoginPageLocators:
-    ab_testing = (By.XPATH, "//a[normalize-space()='A/B Testing']")
-    header = (By.CSS_SELECTOR, "h3")
-
-    # Parameterized locator (dynamic text)
-    button_by_text = (By.XPATH, "//button[text()='{}']")
-```
-
-**Using parameterized locators:**
-
-```python
-def click_button(self, text):
-    locator = self.parameterized_locator(LoginPageLocators.button_by_text, text)
-    self.wait_for_element_clickable(locator).click()
-```
-
----
-
-## 🔀 Parallel Execution
-
-### Thread-Safe Design
-
-Framework is **production-ready for parallel execution** with these guarantees:
-
-✅ **No singleton patterns** - Each scenario gets fresh page objects  
-✅ **Per-scenario driver** - Isolated WebDriver instances  
-✅ **Unique artifacts** - Filenames include PID + thread ID + UUID  
-✅ **Queue-based logging** - No file write collisions  
-✅ **Context-scoped state** - No shared global variables
-
-### Running in Parallel
-
-```bash
-# Install parallel runner
-pip install behave-parallel
-
-# Run 4 scenarios concurrently
-behave --processes 4 --parallel-element scenario
-
-# Parallel with tags
-behave --processes 4 --tags @smoke --parallel-element scenario
-
-# Generate merged Allure report
-allure generate allure_results -o allure_report --clean
-allure open allure_report
-```
-
-### Verification
-
-```bash
-# Stress test: Run same feature 10 times concurrently
-for i in {1..10}; do
-    behave features/herokuapp/login_heroku.feature &
-done
-wait
-
-# Check for failures
-grep -r "FAILED" log_report/
-```
-
-### Parallel Best Practices
-
-| ✅ Do                                         | ❌ Don't                              |
-| --------------------------------------------- | ------------------------------------- |
-| Use `context.driver`                          | Use global `DRIVER` variable          |
-| Lazy page init via `get_heroku_page(context)` | Use `HerokuPage._instance`            |
-| Unique filenames (`UUID + thread_id`)         | Hardcoded names like `screenshot.png` |
-| Per-scenario setup/teardown                   | Shared browser across scenarios       |
-
----
-
-## 📊 Logging
-
-### Log Levels
-
-```python
-# Default (INFO): Clean output
-17-11 - Step: Given I am on login page
-17-11 - Screenshot saved: log_report/failed_step_12345.png
-
-# Debug mode (set debug_mode: true in config):
-2025-11-17 14:23:45 - DEBUG - [MainThread:12345] - Creating chrome WebDriver...
-2025-11-17 14:23:46 - DEBUG - [MainThread:12345] - Navigating to https://...
-```
-
-### Enable Debug Mode
-
-```json
-// config/test_setting.json
-{
-  "browser_options": {
-    "debug_mode": true // Shows thread IDs, detailed steps
-  }
-}
-```
-
-### Log Files
-
-- **Location:** `log_report/test_YYYYMMDD_HHMMSS.log`
-- **Format:** Timestamped, thread-safe (via `QueueHandler`)
-- **Retention:** Auto-rotate (configurable in `logger.py`)
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Common Issues
-
-| Problem                                   | Solution                                                                                            |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `'tuple' object is not callable`          | Locator is static tuple. Use `driver.find_element(*locator)` or `wait_for_element_present(locator)` |
-| `Storage is disabled inside 'data:' URLs` | `clean_browser_state()` tries localStorage on `about:blank`. Navigate to `base_url` first           |
-| `MaxRetryError: Connection refused`       | ChromeDriver crashed. Framework retries 3 times automatically                                       |
-| Edge driver fails offline                 | Install `msedgedriver.exe` manually or switch to Chrome                                             |
-| Parallel tests fail randomly              | Check for shared state (globals, singletons). Use `debug_mode: true` to see thread conflicts        |
-
-### Debug Commands
-
-```bash
-# Check Chrome/ChromeDriver versions
-google-chrome --version
-chromedriver --version
-
-# Kill zombie processes
-taskkill /F /IM chrome.exe
-taskkill /F /IM chromedriver.exe
-
-# Clear cache
-rm -rf **/__pycache__ allure_results log_report
-
-# Verify config syntax
-python -m json.tool config/test_setting.json
-```
+| Issue                 | Solution                                               |
+| --------------------- | ------------------------------------------------------ |
+| WebDriver not found   | Run `pip install --upgrade webdriver-manager`          |
+| Thread conflicts      | Verify thread_count in config matches system resources |
+| Reports not generated | Ensure Java is installed for Allure CLI                |
+| Tests timeout         | Increase `timeout` value in config.json                |
 
 ---
 
-## 🎯 Advanced Features
+## 📚 Additional Resources
 
-### 1. Soft Assertions (TODO)
-
-```python
-# common/web_assertions.py (planned)
-class SoftAssert:
-    def assert_equals(self, actual, expected, msg=""):
-        # Collect failures, report at end
-```
-
-### 2. Retry Flaky Steps (TODO)
-
-```python
-@when('click flaky button')
-@retry(3, delay=2)
-def step_click_flaky(context):
-    get_page(context).click_button()
-```
-
-### 3. Custom Allure Steps
-
-```python
-import allure
-
-@allure.step("Login with username '{username}'")
-def login(context, username):
-    get_login_page(context).enter_username(username)
-```
-
----
-
-## 📚 Dependencies
-
-```
-selenium>=4.15.0
-behave>=1.2.6
-allure-behave>=2.13.2
-webdriver-manager>=4.0.1
-```
-
-**Optional:**
-
-```
-behave-parallel>=1.2.6  # For --processes N
-pytest-xdist>=3.5.0     # Alternative parallel runner
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork repo
-2. Create feature branch: `git checkout -b feature/my-feature`
-3. Follow PEP8 style guide
-4. Add tests for new features
-5. Run linter: `ruff check .`
-6. Submit PR
+- [Behave Documentation](https://behave.readthedocs.io/)
+- [Selenium Documentation](https://selenium.dev/documentation/)
+- [Allure Documentation](https://docs.qameta.io/allure/)
 
 ---
 
 ## 📄 License
 
-MIT License - see LICENSE file
-
----
-
-## 🎓 Learning Resources
-
-- [Behave Tutorial](https://behave.readthedocs.io/en/latest/tutorial.html)
-- [Selenium Python Docs](https://selenium-python.readthedocs.io/)
-- [Page Object Model](https://www.selenium.dev/documentation/test_practices/encouraged/page_object_models/)
-- [Allure Framework](https://docs.qameta.io/allure/)
-
----
-
-**Framework Grade:** Single-thread: 8.5/10 | Parallel: 7.5/10 (after applying thread-safety patches)
-
-**Happy Testing!** 🚀
+MIT License - See LICENSE file for details

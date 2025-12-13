@@ -9,7 +9,6 @@ Features:
 - Debug mode for detailed step-by-step logging
 - Thread-safe: Page objects initialized on-demand in steps
 """
-import platform
 from common.logger import logger, reconfigure_logger_from_settings
 from driver.environment_helpers import (
     setup_directories,
@@ -35,7 +34,6 @@ def before_all(context):
     print("=" * 80)
     print("Selenium BDD Test Runner")
     print("=" * 80)
-    logger.debug(f"OS: {platform.system()} | Python: {platform.python_version()}")
 
 def before_scenario(context, scenario):
     """Setup: Create WebDriver and initialize page objects for the scenario."""

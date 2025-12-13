@@ -20,6 +20,5 @@
     },
     "proxy_settings": {
         "http": "http://proxy.example.com:3128"
-    },
-    "log_level": "INFO"
+    }
 }

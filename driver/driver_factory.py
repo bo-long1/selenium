@@ -243,7 +243,7 @@ def create_driver_from_settings():
     browser_type = browser_opts.get('browser_type', 'chrome').lower()
     proxy_settings = settings.get('proxy_settings', {})
     
-    logger.info(f'Creating {browser_type} WebDriver...')
+    logger.debug(f'Creating {browser_type} WebDriver...')
     
     if browser_type == 'chrome':
         return create_chrome_driver(browser_opts, timeouts, proxy_settings)
