@@ -52,6 +52,14 @@ def _apply_common_options(options, browser_opts: dict):
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     
+    # Suppress Chrome error messages (GCM, sync, etc.)
+    options.add_argument('--disable-features=MediaRouter')
+    options.add_argument('--disable-background-networking')
+    options.add_argument('--disable-sync')
+    options.add_argument('--disable-default-apps')
+    options.add_argument('--log-level=3')  # Only fatal errors
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    
     # Enable browser console logging
     options.set_capability('goog:loggingPrefs', {
         'browser': 'ALL',

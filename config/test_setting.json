@@ -1,8 +1,6 @@
 {
     "environments": {
-        "herokuapp": {
-            "base_url": "https://the-internet.herokuapp.com/"
-        }
+        "base_url": "https://the-internet.herokuapp.com/"
     },
     "browser_options": {
         "browser_type": "chrome",
@@ -20,5 +18,7 @@
     },
     "proxy_settings": {
         "http": "http://proxy.example.com:3128"
-    }
+    },
+    "auto_generate_report": true,
+    "allure_results_dir": "allure_results"
 }

@@ -111,6 +111,16 @@ python driver/runner.py --feature herokuapp --mode parallel --workers 4
 
 # Sequential
 python driver/runner.py --feature herokuapp --mode single
+
+# Specific file custom
+## Folder name
+python driver/runner.py --feature herokuapp
+
+## Specific file (relative path)
+python driver/runner.py --feature herokuapp/check_boxes.feature
+
+## with ./ prefix
+python driver/runner.py --feature ./herokuapp/check_boxes.feature
 ```
 
 ### Step 3: View Report

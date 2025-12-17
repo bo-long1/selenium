@@ -16,4 +16,9 @@ class LoginPageLocators:
 class CheckboxPageLocators:
     """Locators for the checkbox page"""
     check_box = (By.CSS_SELECTOR, "input[type='checkbox']")
-    check_box_by_text = (By.XPATH, "//form//input[@type='checkbox' and following-sibling::text()[normalize-space()='{}']]")
+    check_box_by_text = (By.XPATH, "//form[@id='checkboxes']//input[@type='checkbox'][{}]")
+
+class ChallengingDOMPageLocators:
+    """Locators for the Challenging DOM page"""
+    challenging_dom_link = (By.XPATH, "//a[normalize-space()='{}']")
+    bar_button = (By.XPATH, "//a[text()='{}']")

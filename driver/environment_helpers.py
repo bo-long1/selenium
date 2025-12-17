@@ -29,6 +29,10 @@ ALLURE_BASE_DIR = Path("allure_results")
 LOG_DIR = Path("log_report")
 DRIVER_CREATION_RETRIES = 3
 
+# Flag to ensure cleanup runs only once (thread-safe)
+_cleanup_done = False
+_cleanup_lock = threading.Lock()
+
 
 # ============================================================================
 # DIRECTORY SETUP
@@ -49,15 +53,24 @@ def setup_directories():
 
 
 def clean_allure_results():
-    """Remove old Allure results if they exist."""
-    if ALLURE_BASE_DIR.exists():
-        try:
-            for p in ALLURE_BASE_DIR.iterdir():
-                if p.is_dir():
-                    shutil.rmtree(p, ignore_errors=True)
-            logger.debug("Cleaned old allure worker directories.")
-        except Exception as e:
-            logger.warning(f"Cannot fully clean allure base: {e}")
+    """Remove old Allure results if they exist (runs only once)."""
+    global _cleanup_done
+    
+    with _cleanup_lock:
+        if _cleanup_done:
+            logger.debug("Allure cleanup already done, skipping.")
+            return
+        
+        if ALLURE_BASE_DIR.exists():
+            try:
+                for p in ALLURE_BASE_DIR.iterdir():
+                    if p.is_dir():
+                        shutil.rmtree(p, ignore_errors=True)
+                logger.debug("Cleaned old allure worker directories.")
+            except Exception as e:
+                logger.warning(f"Cannot fully clean allure base: {e}")
+        
+        _cleanup_done = True
 
 
 # ============================================================================
