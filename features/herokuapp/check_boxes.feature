@@ -1,10 +1,11 @@
 Feature: Checkboxes on The Internet Herokuapp
 
     Background:
-        Given I am on "https://the-internet.herokuapp.com/checkboxes"
+        Given Access to the Herokuapp home page
 
     @checkbox
     Scenario Outline: Set and verify checkbox state using text labels
+        Given Click to the "Checkboxes" link
         When I set checkbox "<checkbox_label>" to "<desired_state>"
         Then checkbox "<checkbox_label>" should be "<expected_state>"
 

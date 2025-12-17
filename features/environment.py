@@ -10,6 +10,7 @@ Features:
 - Thread-safe: Page objects initialized on-demand in steps
 """
 from common.logger import logger, reconfigure_logger_from_settings
+from common.utils import load_settings
 from driver.environment_helpers import (
     setup_directories,
     clean_allure_results,
@@ -31,9 +32,14 @@ def before_all(context):
     clean_allure_results()
     setup_directories()
     reconfigure_logger_from_settings()
+    
     print("=" * 80)
     print("Selenium BDD Test Runner")
     print("=" * 80)
+    
+    # Load environments from test_setting.json
+    settings = load_settings()
+    context.environments = settings.get('environments', {})
 
 def before_scenario(context, scenario):
     """Setup: Create WebDriver and initialize page objects for the scenario."""
