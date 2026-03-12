@@ -2,7 +2,7 @@
 WebDriver factory for creating and configuring browser instances.
 
 Supports:
-- Chrome and Edge browsers
+- Chrome, Edge and Safari browsers
 - Automatic driver management via webdriver-manager
 - Fallback to local drivers when offline
 - Proxy configuration
@@ -12,11 +12,13 @@ Supports:
 import os
 import shutil
 import logging
+import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.safari.options import Options as SafariOptions
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from urllib.parse import urlparse
 from webdriver_manager.chrome import ChromeDriverManager
@@ -183,22 +185,19 @@ def _get_edge_service(version: str = None) -> EdgeService:
         return EdgeService(driver_path)
     
     except Exception as e:
-        logger.warning(f'webdriver-manager failed to install msedgedriver: {e}')
+        logger.debug(f'webdriver-manager failed to install msedgedriver: {e}')
         
         # Fallback to local driver
         local_driver = shutil.which('msedgedriver') or shutil.which('msedgedriver.exe')
         if local_driver:
             logger.info(f'Using local msedgedriver: {local_driver}')
             return EdgeService(local_driver)
-        
-        raise RuntimeError(
-            'Failed to download msedgedriver via webdriver-manager.\n'
-            'No msedgedriver found on PATH. Please ensure:\n'
-            '1. You have internet access, OR\n'
-            '2. msedgedriver is installed locally and added to your PATH\n'
-            '3. Or switch to Chrome in config/test_setting.json\n'
-            f'Original error: {e}'
+
+        # Final fallback: let Selenium Manager resolve the driver.
+        logger.debug(
+            'No msedgedriver found on PATH. Falling back to Selenium Manager via default EdgeService().'
         )
+        return EdgeService()
 
 
 # ============================================================================
@@ -240,6 +239,36 @@ def create_edge_driver(browser_opts: dict, timeouts: dict, proxy_settings: dict 
     return driver
 
 
+def create_safari_driver(browser_opts: dict, timeouts: dict, proxy_settings: dict | None = None) -> webdriver.Safari:
+    """Create and configure Safari WebDriver (macOS only)."""
+    if sys.platform != 'darwin':
+        raise RuntimeError(
+            'SafariDriver is supported only on macOS. '
+            f'Current platform: {sys.platform}. '
+            'Use chrome/edge on Windows/Linux.'
+        )
+
+    options = SafariOptions()
+    if browser_opts.get('technology_preview'):
+        options.use_technology_preview = True
+
+    if browser_opts.get('headless'):
+        logger.debug('Headless mode is not supported by SafariDriver; ignoring headless setting.')
+    if browser_opts.get('incognito'):
+        logger.debug('Incognito/InPrivate mode is not supported by SafariDriver; ignoring incognito setting.')
+    if browser_opts.get('disable_notifications'):
+        logger.debug('Disable notifications is not supported via SafariDriver options; ignoring setting.')
+    if browser_opts.get('proxy') and proxy_settings:
+        logger.debug('Proxy via capabilities is not supported for local SafariDriver; configure macOS system proxy instead.')
+
+    driver = webdriver.Safari(options=options)
+
+    _apply_timeouts(driver, timeouts)
+    _apply_window_size(driver, browser_opts.get('window_size', 'maximize'))
+
+    return driver
+
+
 # ============================================================================
 # MAIN FACTORY FUNCTION
 # ============================================================================
@@ -258,9 +287,12 @@ def create_driver_from_settings():
     
     elif browser_type == 'edge':
         return create_edge_driver(browser_opts, timeouts, proxy_settings)
+
+    elif browser_type == 'safari':
+        return create_safari_driver(browser_opts, timeouts, proxy_settings)
     
     else:
         raise ValueError(
             f'Unsupported browser type: {browser_type}\n'
-            f'Supported browsers: chrome, edge'
+            f'Supported browsers: chrome, edge, safari'
         )

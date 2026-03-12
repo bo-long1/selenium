@@ -86,8 +86,13 @@ def create_driver(context: Any, scenario_name: str):
             logger.debug(f"Driver created (attempt {attempt}) for scenario: {scenario_name}")
             return
         except Exception as e:
+            last_err = e
             logger.warning(f"Driver init attempt {attempt} failed: {e}")
-    raise RuntimeError(f"Failed to create WebDriver after {DRIVER_CREATION_RETRIES} attempts") from last_err
+    if last_err is not None:
+        raise RuntimeError(
+            f"Failed to create WebDriver after {DRIVER_CREATION_RETRIES} attempts. Last error: {last_err}"
+        ) from last_err
+    raise RuntimeError(f"Failed to create WebDriver after {DRIVER_CREATION_RETRIES} attempts")
 
 
 def close_driver(context: Any, scenario_name: str):
@@ -99,10 +104,24 @@ def close_driver(context: Any, scenario_name: str):
 
     try:
         driver.delete_all_cookies()
-        driver.clear_cache()
+    except Exception as e:
+        logger.debug(f"Could not delete cookies: {e}")
+
+    try:
+        clear_cache = getattr(driver, "clear_cache", None)
+        if callable(clear_cache):
+            clear_cache()
+        else:
+            execute_cdp_cmd = getattr(driver, "execute_cdp_cmd", None)
+            if callable(execute_cdp_cmd):
+                execute_cdp_cmd("Network.clearBrowserCache", {})
+    except Exception as e:
+        logger.debug(f"Could not clear browser cache: {e}")
+
+    try:
         driver.quit()
     except Exception as e:
-        logger.debug(f"Could not delete cookies, clear cache, and quit driver: {e}")
+        logger.debug(f"Could not quit driver: {e}")
     finally:
         context.driver = None
 
@@ -113,11 +132,18 @@ def close_driver_if_continuing(context: Any):
         return
 
     try:
-        driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
-        driver.execute_cdp_cmd("Network.clearBrowserCache", {})
-        driver.execute_cdp_cmd("window.close", {})
+        execute_cdp_cmd = getattr(driver, "execute_cdp_cmd", None)
+        if callable(execute_cdp_cmd):
+            execute_cdp_cmd("Network.clearBrowserCookies", {})
+            execute_cdp_cmd("Network.clearBrowserCache", {})
+        else:
+            driver.delete_all_cookies()
     except Exception as e:
-        logger.debug(f"Could not delete cookies, clear cache, and quit driver: {e}")
+        logger.debug(f"Could not delete cookies/clear cache for continuing flow: {e}")
+    try:
+        driver.quit()
+    except Exception as e:
+        logger.debug(f"Could not quit driver in continuing flow: {e}")
     finally:
         context.driver = None
 # ============================================================================

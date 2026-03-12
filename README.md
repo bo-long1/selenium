@@ -54,7 +54,7 @@ behave features/herokuapp/login_heroku.feature
 ### System Requirements
 - **Python**: 3.11 or higher
 - **Git**: For cloning the repository
-- **Browser**: Chrome or Edge (automatically managed via webdriver-manager)
+- **Browser**: Chrome or Edge (webdriver-manager), Safari (SafariDriver on macOS)
 - **Java**: 11+ (required for Allure CLI)
 
 ### Step 1: Clone the Repository
@@ -206,19 +206,47 @@ Retry Trend - Flaky test detection
 
 ## ⚙️ Configuration
 
-Edit `config/config.json` for environment-specific settings:
+Edit `config/test_setting.json` to choose browser and runtime options:
 
 ```json
 {
-  "dev": {
-    "base_url": "https://dev.example.com",
-    "browser": "chrome",
+  "environments": {
+    "base_url": "https://the-internet.herokuapp.com/"
+  },
+  "browser_options": {
+    "browser_type": "edge",
+    "version": "latest",
     "headless": false,
-    "timeout": 10,
-    "thread_count": 4
+    "window_size": "maximize",
+    "proxy": false,
+    "debug_mode": false
+  },
+  "timeouts": {
+    "implicit_wait": 10,
+    "page_load_timeout": 20,
+    "script_timeout": 20,
+    "poll_frequency": 0.5
   }
 }
 ```
+
+SafariDriver example (macOS only):
+
+```json
+{
+  "browser_options": {
+    "browser_type": "safari",
+    "technology_preview": false,
+    "window_size": "maximize",
+    "debug_mode": false
+  }
+}
+```
+
+Notes for Safari on macOS:
+- Enable Safari automation: `Safari > Settings > Advanced > Show Develop menu`, then `Develop > Allow Remote Automation`.
+- Optional one-time command: `safaridriver --enable`.
+- SafariDriver is not supported on Windows/Linux.
 
 ---
 
