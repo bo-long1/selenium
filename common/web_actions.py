@@ -2,6 +2,7 @@
 
 import time
 from typing import Optional, Tuple, List
+from selenium.common import NoAlertPresentException
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
@@ -59,18 +60,6 @@ class WebAction:
 
 
     # TYPING ACTIONS
-    def type(self, locator: Locator, text: str, clear_first: bool = True) -> None:
-        """Type text into element."""
-        element = self._find_element(locator)
-        if clear_first:
-            element.clear()
-        element.send_keys(text)
-
-    def clear(self, locator: Locator) -> None:
-        """Clear input element."""
-        element = self._find_element(locator)
-        element.clear()
-
     def enter_each_char(self, locator: Locator, text: str, delay: float = 0.1) -> None:
         element = self._find_element(locator)
         element.clear()
@@ -94,6 +83,22 @@ class WebAction:
         """Get input element value."""
         return self.get_attribute(locator, 'value')
 
+    def get_css_value(self, locator: Locator, property_name: str) -> str:
+        """Get CSS property value of element."""
+        element = self._find_element(locator)
+        return element.value_of_css_property(property_name)
+
+    def get_element_size(self, locator: Locator) -> Tuple[int, int]:
+        """Get width and height of element."""
+        element = self._find_element(locator)
+        size = element.size
+        return size['width'], size['height']
+
+    def get_element_location(self, locator: Locator) -> Tuple[int, int]:
+        """Get x and y coordinates of element."""
+        element = self._find_element(locator)
+        location = element.location
+        return location['x'], location['y']
 
     # ELEMENT STATE CHECKS
     def is_displayed(self, locator: Locator) -> bool:
@@ -170,6 +175,14 @@ class WebAction:
         """Scroll to bottom of page."""
         self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
+    def scroll_by(self, x: int = 0, y: int = 0) -> None:
+        """Scroll by specified x and y offsets."""
+        self.driver.execute_script(f"window.scrollBy({x}, {y});")
+
+    def execute_script(self, script: str, *args):
+        """Execute JavaScript in the context of the current page."""
+        return self.driver.execute_script(script, *args)
+
 
     # CHECKBOX / RADIO ACTIONS
     def check(self, locator: Locator) -> None:
@@ -208,17 +221,20 @@ class WebAction:
         alert = self.wait.wait_for_alert_present(timeout)
         alert.dismiss()
 
-    def get_alert_text(self, timeout: int = None) -> str:
-        """Get alert text."""
-        alert = self.wait.wait_for_alert_present(timeout)
-        return alert.text
-
     def type_in_alert(self, text: str, timeout: int = None) -> None:
         """Type in JavaScript prompt."""
         alert = self.wait.wait_for_alert_present(timeout)
         alert.send_keys(text)
         alert.accept()
 
+    def close_all_alerts(self) -> None:
+        """Close all open alerts."""
+        while True:
+            try:
+                alert = self.driver.switch_to.alert
+                alert.accept()
+            except NoAlertPresentException:
+                break
 
     # MULTIPLE ELEMENTS
     def find_elements(self, locator: Locator) -> List[WebElement]:

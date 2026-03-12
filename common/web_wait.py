@@ -115,3 +115,23 @@ class WebWait:
             timeout,
             f"Number of windows did not reach {number} within {timeout or self.default_timeout}s"
         )
+
+    def wait_dashboard_loaded(self, timeout: int = None) -> bool:
+        """Custom wait for dashboard to be fully loaded (example implementation)."""
+        # This is a placeholder implementation. Adjust the locator and condition as needed.
+        dashboard_locator = ("css selector", "#dashboard")
+        return self._wait_until(
+            EC.visibility_of_element_located(dashboard_locator),
+            timeout,
+            f"Dashboard not loaded within {timeout or self.default_timeout}s"
+        )
+
+    def wait_dashboard_reloaded(self, timeout: int = None) -> bool:
+        """Custom wait for dashboard to be reloaded (example implementation)."""
+        # This is a placeholder implementation. Adjust the locator and condition as needed.
+        dashboard_locator = ("css selector", "#dashboard")
+        return self._wait_until(
+            EC.staleness_of(self.driver.find_element(*dashboard_locator)),
+            timeout,
+            f"Dashboard did not reload within {timeout or self.default_timeout}s"
+        )
